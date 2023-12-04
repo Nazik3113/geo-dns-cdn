@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  hsa1014-bind:
+    container_name: hsa1014-bind
+    build:
+      context: ./bind9
+    environment:
+      - BIND9_USER=root
+      - TZ=Europe/Kiev
+    ports:
+      - "127.0.0.1:53:53/tcp"
+      - "127.0.0.1:53:53/udp"
+      - "127.0.0.1:953:953/tcp"
+    restart: always
+    networks: 
+      hsa1014-default:
+        ipv4_address: 20.79.0.2
+
+  hsa1014-cdn-tester:
+    container_name: hsa1014-cdn-tester
+    image: nginx:1.21.6-alpine
+    ports:
+      - "8085:80"
+    restart: always
+    volumes:
+      - ./cdn-tester/nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      hsa1014-default:
+        ipv4_address: 20.79.0.5
+    depends_on: 
+      - hsa1014-bind
+      - hsa1014-lb-default
+      - hsa1014-lb-germany
+
+  hsa1014-lb-default:
+    container_name: hsa1014-lb-default
+    image: nginx:1.21.6-alpine
+    ports:
+      - "8083:80"
+    restart: always
+    volumes:
+      - ./load-balancer-default/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./load-balancer-default/images:/images
+    networks: 
+      hsa1014-default:
+        ipv4_address: 20.79.0.3
+
+  hsa1014-lb-germany:
+    container_name: hsa1014-lb-germany
+    image: nginx:1.21.6-alpine
+    ports:
+      - "8084:80"
+    restart: always
+    volumes:
+      - ./load-balancer-germany/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./load-balancer-germany/images:/images
+    networks:
+      hsa1014-default:
+        ipv4_address: 20.79.0.4
+
+networks:
+  hsa1014-default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 20.79.0.0/16
